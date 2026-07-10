@@ -1,0 +1,60 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+.output
+.vinxi
+.tanstack/**
+.nitro
+*.local
+*.tsbuildinfo
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Local workspace metadata
+.workspace/
+.lovable/
+.git.broken-worktree
+.git.sandbox-backup/
+aurasport-backend/.git_repo_backup/
+
+# Backend runtime files
+aurasport-backend/.env
+aurasport-backend/app/.env
+aurasport-backend/logs/*.log
+aurasport-backend/uploads/*
+!aurasport-backend/uploads/.gitkeep
+!aurasport-backend/logs/.gitkeep
+
+# Wrangler / Cloudflare
+.wrangler/
+.dev.vars
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
