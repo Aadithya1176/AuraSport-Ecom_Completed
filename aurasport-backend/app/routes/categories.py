@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
+from ..auth import admin_required
 from ..database import get_db
-from ..models import Categories, Products
+from ..models import Categories, Products, Users
 from ..schemas import CategoryCreate, CategoryResponse, ErrorResponse, MessageResponse, ProductResponse
 
 
@@ -29,7 +30,11 @@ def _get_category_or_404(db: Session, category_id: int) -> Categories:
     description="Create a product category.",
     responses={400: {"model": ErrorResponse}},
 )
-def create_category(payload: CategoryCreate, db: Session = Depends(get_db)) -> Categories:
+def create_category(
+    payload: CategoryCreate,
+    _: Users = Depends(admin_required),
+    db: Session = Depends(get_db),
+) -> Categories:
     category = Categories(name=payload.name.strip())
     db.add(category)
     try:
@@ -67,7 +72,12 @@ def get_category(category_id: int, db: Session = Depends(get_db)) -> Categories:
     summary="Update category",
     responses={400: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
 )
-def update_category(category_id: int, payload: CategoryCreate, db: Session = Depends(get_db)) -> Categories:
+def update_category(
+    category_id: int,
+    payload: CategoryCreate,
+    _: Users = Depends(admin_required),
+    db: Session = Depends(get_db),
+) -> Categories:
     category = _get_category_or_404(db, category_id)
     category.name = payload.name.strip()
     try:
@@ -85,7 +95,11 @@ def update_category(category_id: int, payload: CategoryCreate, db: Session = Dep
     summary="Delete category",
     responses={400: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
 )
-def delete_category(category_id: int, db: Session = Depends(get_db)) -> MessageResponse:
+def delete_category(
+    category_id: int,
+    _: Users = Depends(admin_required),
+    db: Session = Depends(get_db),
+) -> MessageResponse:
     category = _get_category_or_404(db, category_id)
     if category.products:
         raise HTTPException(status_code=400, detail="Cannot delete category while products are assigned to it")

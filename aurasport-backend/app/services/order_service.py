@@ -2,6 +2,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload
 
 from ..models import Cart, OrderItems, Orders, Users
+from ..schemas import OrderAdminUpdate, OrderRequestCreate
 
 
 def _order_query(db: Session):
@@ -12,7 +13,7 @@ def _order_query(db: Session):
     )
 
 
-def create_order_from_cart(db: Session, user: Users) -> Orders:
+def create_order_from_cart(db: Session, user: Users, payload: OrderRequestCreate) -> Orders:
     cart_items = (
         db.query(Cart)
         .options(joinedload(Cart.product))
@@ -24,7 +25,19 @@ def create_order_from_cart(db: Session, user: Users) -> Orders:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
     total_price = sum(item.product.price * item.qty for item in cart_items)
-    order = Orders(user_id=user.id, total_price=total_price, status="pending")
+    order = Orders(
+        user_id=user.id,
+        total_price=total_price,
+        customer_name=payload.customer_name.strip(),
+        phone_number=payload.phone_number.strip(),
+        address_line=payload.address_line.strip(),
+        city=payload.city.strip(),
+        state=payload.state.strip(),
+        postal_code=payload.postal_code.strip(),
+        contact_preference=payload.contact_preference,
+        notes=payload.notes.strip() if payload.notes else None,
+        status="pending",
+    )
     db.add(order)
     db.flush()
 
@@ -54,3 +67,23 @@ def get_order_for_user(db: Session, user_id: int, order_id: int) -> Orders:
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     return order
+
+
+def get_all_orders(db: Session) -> list[Orders]:
+    return _order_query(db).all()
+
+
+def get_order_by_id(db: Session, order_id: int) -> Orders:
+    order = _order_query(db).filter(Orders.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return order
+
+
+def update_order_by_admin(db: Session, order_id: int, payload: OrderAdminUpdate) -> Orders:
+    order = get_order_by_id(db, order_id)
+    order.status = payload.status
+    order.admin_notes = payload.admin_notes.strip() if payload.admin_notes else None
+    db.commit()
+    db.refresh(order)
+    return get_order_by_id(db, order_id)

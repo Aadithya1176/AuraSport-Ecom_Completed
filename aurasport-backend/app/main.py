@@ -28,7 +28,7 @@ app = FastAPI(
         {"name": "Products", "description": "Product catalog management, image upload, and search APIs."},
         {"name": "Categories", "description": "Category management and category product listings."},
         {"name": "Cart", "description": "Shopping cart APIs for authenticated users."},
-        {"name": "Orders", "description": "Order checkout and order history endpoints."},
+        {"name": "Orders", "description": "Manual order request and order history endpoints."},
     ],
 )
 

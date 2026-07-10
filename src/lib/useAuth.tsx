@@ -12,6 +12,7 @@ type AuthCtx = {
   signUp: (payload: { username: string; email: string; password: string }) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  setUser: (user: BackendUser | null) => void;
 };
 
 const Ctx = createContext<AuthCtx>({
@@ -22,6 +23,7 @@ const Ctx = createContext<AuthCtx>({
   signUp: async () => {},
   signOut: async () => {},
   refreshUser: async () => {},
+  setUser: () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -128,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           window.dispatchEvent(new Event("aurasport-cart-updated"));
         },
         refreshUser,
+        setUser: (nextUser) => persistSession(token, nextUser),
       }}
     >
       {children}

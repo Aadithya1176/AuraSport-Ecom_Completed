@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from ..auth import admin_required, create_access_token, get_current_user, hash_password, verify_password
 from ..database import get_db
 from ..models import Users
-from ..schemas import ErrorResponse, LoginResponse, UserCreate, UserLogin, UserResponse
+from ..schemas import ErrorResponse, LoginResponse, UserCreate, UserLogin, UserProfileUpdate, UserResponse
 
 
 user_router = APIRouter(prefix="", tags=["Users"])
@@ -63,6 +63,27 @@ def login_user(user: UserLogin, db: Session = Depends(get_db)) -> LoginResponse:
     responses={401: {"model": ErrorResponse}},
 )
 def get_me(current_user: Users = Depends(get_current_user)) -> Users:
+    return current_user
+
+
+@user_router.patch(
+    "/me",
+    response_model=UserResponse,
+    summary="Update current user profile",
+    description="Save profile and delivery details for the authenticated user.",
+    responses={401: {"model": ErrorResponse}},
+)
+def update_me(
+    payload: UserProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user: Users = Depends(get_current_user),
+) -> Users:
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(current_user, field, value.strip() if isinstance(value, str) else value)
+
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
     return current_user
 
 

@@ -12,10 +12,35 @@ export const Route = createFileRoute("/cart")({
   head: () => ({
     meta: [
       { title: "Cart | AuraSport" },
-      { name: "description", content: "Manage your AuraSport cart and checkout through the FastAPI backend." },
+      {
+        name: "description",
+        content: "Review your AuraSport cart and place a manual order request through the backend.",
+      },
     ],
   }),
 });
+
+type RequestFormState = {
+  customer_name: string;
+  phone_number: string;
+  address_line: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  contact_preference: "whatsapp" | "call" | "email";
+  notes: string;
+};
+
+const initialFormState: RequestFormState = {
+  customer_name: "",
+  phone_number: "",
+  address_line: "",
+  city: "",
+  state: "",
+  postal_code: "",
+  contact_preference: "whatsapp",
+  notes: "",
+};
 
 function CartPage() {
   const navigate = useNavigate();
@@ -23,7 +48,8 @@ function CartPage() {
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyItemId, setBusyItemId] = useState<number | null>(null);
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [requestLoading, setRequestLoading] = useState(false);
+  const [form, setForm] = useState<RequestFormState>(initialFormState);
 
   useEffect(() => {
     if (!token) {
@@ -45,10 +71,31 @@ function CartPage() {
     void load();
   }, [token]);
 
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      customer_name: current.customer_name || user.full_name || "",
+      phone_number: current.phone_number || user.phone_number || "",
+      address_line: current.address_line || user.address_line || "",
+      city: current.city || user.city || "",
+      state: current.state || user.state || "",
+      postal_code: current.postal_code || user.postal_code || "",
+      contact_preference: user.preferred_contact || current.contact_preference || "whatsapp",
+    }));
+  }, [user]);
+
   const total = useMemo(
     () => items.reduce((sum, item) => sum + item.product.price * item.qty, 0),
     [items],
   );
+
+  function updateForm<K extends keyof RequestFormState>(key: K, value: RequestFormState[K]) {
+    setForm((current) => ({ ...current, [key]: value }));
+  }
 
   async function updateQty(cartItemId: number, qty: number) {
     if (!token || qty < 1) {
@@ -92,26 +139,43 @@ function CartPage() {
     }
   }
 
-  async function checkout() {
+  async function submitOrderRequest() {
     if (!token) {
       navigate({ to: "/auth", search: { mode: "signin", redirect: "/cart" } });
       return;
     }
 
+    const missingField = Object.entries(form).find(([key, value]) => {
+      if (key === "notes") {
+        return false;
+      }
+      return String(value).trim().length === 0;
+    });
+
+    if (missingField) {
+      toast.error("Please fill in all contact and address details");
+      return;
+    }
+
     try {
-      setCheckoutLoading(true);
-      const order = await apiRequest<Order>("/orders/checkout", {
+      setRequestLoading(true);
+      const order = await apiRequest<Order>("/orders/request", {
         method: "POST",
         token,
+        body: {
+          ...form,
+          notes: form.notes.trim() ? form.notes.trim() : null,
+        },
       });
       setItems([]);
+      setForm(initialFormState);
       window.dispatchEvent(new Event("aurasport-cart-updated"));
-      toast.success(`Order #${order.id} created`);
+      toast.success(`Request #${order.id} submitted`);
       navigate({ to: "/orders" });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Checkout failed");
+      toast.error(error instanceof Error ? error.message : "Could not place order request");
     } finally {
-      setCheckoutLoading(false);
+      setRequestLoading(false);
     }
   }
 
@@ -122,9 +186,13 @@ function CartPage() {
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary">Cart</p>
-            <h1 className="mt-4 text-4xl font-black tracking-[-0.04em] md:text-6xl">Your active checkout.</h1>
-            <p className="mt-4 text-muted-foreground">
-              {user ? `Signed in as ${user.email}` : "Sign in to manage your cart and place orders."}
+            <h1 className="mt-4 text-4xl font-black tracking-[-0.04em] md:text-6xl">
+              Your order request.
+            </h1>
+            <p className="mt-4 max-w-2xl text-muted-foreground">
+              {user
+                ? `Signed in as ${user.email}. Review your items, add your contact details, and send a request.`
+                : "Sign in to manage your cart and send an order request."}
             </p>
           </div>
           <Link
@@ -138,7 +206,7 @@ function CartPage() {
         {!token ? (
           <EmptyState
             title="You need an account to use the cart."
-            description="Sign in, then the cart and checkout flow will use the backend JWT session."
+            description="Sign in, then you can send your cart as an order request."
             actionLabel="Sign in"
             actionTo="/auth"
           />
@@ -149,12 +217,12 @@ function CartPage() {
         ) : items.length === 0 ? (
           <EmptyState
             title="Your cart is empty."
-            description="Add products from the live catalog to start a checkout."
+            description="Add products from the live catalog before sending an order request."
             actionLabel="Shop now"
             actionTo="/shop"
           />
         ) : (
-          <div className="mt-10 grid gap-8 lg:grid-cols-[1.5fr_0.8fr]">
+          <div className="mt-10 grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
             <section className="space-y-4">
               {items.map((item) => (
                 <article
@@ -208,27 +276,113 @@ function CartPage() {
               ))}
             </section>
 
-            <aside className="h-fit rounded-[2rem] border border-white/10 bg-card/70 p-6">
-              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary">Summary</p>
-              <div className="mt-6 flex items-center justify-between text-sm text-muted-foreground">
-                <span>Items</span>
-                <span>{items.length}</span>
-              </div>
-              <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
-                <span>Units</span>
-                <span>{items.reduce((sum, item) => sum + item.qty, 0)}</span>
-              </div>
-              <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-6 text-xl font-black">
-                <span>Total</span>
-                <span>${total.toFixed(2)}</span>
-              </div>
-              <button
-                onClick={() => void checkout()}
-                disabled={checkoutLoading}
-                className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-4 text-sm font-bold uppercase tracking-[0.2em] text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
-              >
-                {checkoutLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Checkout"}
-              </button>
+            <aside className="space-y-6">
+              <section className="rounded-[2rem] border border-white/10 bg-card/70 p-6">
+                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary">Summary</p>
+                <div className="mt-6 flex items-center justify-between text-sm text-muted-foreground">
+                  <span>Items</span>
+                  <span>{items.length}</span>
+                </div>
+                <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
+                  <span>Units</span>
+                  <span>{items.reduce((sum, item) => sum + item.qty, 0)}</span>
+                </div>
+                <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-6 text-xl font-black">
+                  <span>Request total</span>
+                  <span>${total.toFixed(2)}</span>
+                </div>
+                <p className="mt-4 text-sm text-muted-foreground">
+                  No payment happens here. Once you submit the request, AuraSport can contact you to confirm details.
+                </p>
+              </section>
+
+              <section className="rounded-[2rem] border border-white/10 bg-card/70 p-6">
+                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary">Contact Details</p>
+                <div className="mt-4 rounded-[1.5rem] border border-white/10 bg-background/30 p-4 text-sm text-muted-foreground">
+                  Save these details once in your{" "}
+                  <Link to="/profile" className="font-semibold text-foreground underline underline-offset-4">
+                    profile
+                  </Link>{" "}
+                  and they will autofill here next time.
+                </div>
+                <div className="mt-6 grid gap-4">
+                  <FormField
+                    label="Full name"
+                    value={form.customer_name}
+                    onChange={(value) => updateForm("customer_name", value)}
+                    placeholder="Aadithya Raj"
+                  />
+                  <FormField
+                    label="Phone number"
+                    value={form.phone_number}
+                    onChange={(value) => updateForm("phone_number", value)}
+                    placeholder="9876543210"
+                  />
+                  <FormField
+                    label="Address"
+                    value={form.address_line}
+                    onChange={(value) => updateForm("address_line", value)}
+                    placeholder="12 Lake View Road"
+                  />
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FormField
+                      label="City"
+                      value={form.city}
+                      onChange={(value) => updateForm("city", value)}
+                      placeholder="Chennai"
+                    />
+                    <FormField
+                      label="State"
+                      value={form.state}
+                      onChange={(value) => updateForm("state", value)}
+                      placeholder="Tamil Nadu"
+                    />
+                  </div>
+                  <FormField
+                    label="Postal code"
+                    value={form.postal_code}
+                    onChange={(value) => updateForm("postal_code", value)}
+                    placeholder="600001"
+                  />
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium">Preferred contact method</span>
+                    <select
+                      value={form.contact_preference}
+                      onChange={(event) =>
+                        updateForm(
+                          "contact_preference",
+                          event.target.value as RequestFormState["contact_preference"],
+                        )
+                      }
+                      className="w-full rounded-2xl border border-white/10 bg-background/70 px-4 py-3 text-sm outline-none"
+                    >
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="call">Call</option>
+                      <option value="email">Email</option>
+                    </select>
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium">Notes</span>
+                    <textarea
+                      value={form.notes}
+                      onChange={(event) => updateForm("notes", event.target.value)}
+                      placeholder="Preferred delivery time, sizing note, or anything we should know"
+                      className="min-h-28 w-full rounded-2xl border border-white/10 bg-background/70 px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
+                    />
+                  </label>
+                  <button
+                    onClick={() => void submitOrderRequest()}
+                    disabled={requestLoading}
+                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-4 text-sm font-bold uppercase tracking-[0.2em] text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
+                  >
+                    {requestLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Place order request"
+                    )}
+                  </button>
+                </div>
+              </section>
             </aside>
           </div>
         )}
@@ -279,5 +433,29 @@ function QtyButton({
     >
       {children}
     </button>
+  );
+}
+
+function FormField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <label className="space-y-2">
+      <span className="text-sm font-medium">{label}</span>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-2xl border border-white/10 bg-background/70 px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
+      />
+    </label>
   );
 }

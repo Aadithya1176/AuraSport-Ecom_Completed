@@ -48,10 +48,10 @@ function OrdersPage() {
       <main className="mx-auto max-w-7xl px-6 pb-20 pt-32">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary">Orders</p>
-            <h1 className="mt-4 text-4xl font-black tracking-[-0.04em] md:text-6xl">Your order history.</h1>
+            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary">Requests</p>
+            <h1 className="mt-4 text-4xl font-black tracking-[-0.04em] md:text-6xl">Your order requests.</h1>
             <p className="mt-4 text-muted-foreground">
-              {user ? `Review every checkout placed by ${user.email}.` : "Sign in to view your order history."}
+              {user ? `Review every order request placed by ${user.email}.` : "Sign in to view your order history."}
             </p>
           </div>
           <Link
@@ -80,8 +80,8 @@ function OrdersPage() {
           </div>
         ) : orders.length === 0 ? (
           <div className="mt-10 rounded-[2rem] border border-dashed border-white/10 p-10 text-center">
-            <h2 className="text-2xl font-semibold">No orders yet.</h2>
-            <p className="mt-2 text-muted-foreground">Once you check out, your orders will appear here.</p>
+            <h2 className="text-2xl font-semibold">No requests yet.</h2>
+            <p className="mt-2 text-muted-foreground">Once you place an order request, it will appear here.</p>
           </div>
         ) : (
           <section className="mt-10 space-y-6">
@@ -90,14 +90,35 @@ function OrdersPage() {
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary">
-                      Order #{order.id}
+                      Request #{order.id}
                     </p>
                     <h2 className="mt-2 text-2xl font-bold capitalize">{order.status}</h2>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {order.customer_name} | {order.contact_preference} | {order.phone_number}
+                    </p>
                   </div>
                   <div className="text-right">
                     <div className="text-sm text-muted-foreground">Total</div>
                     <div className="text-2xl font-black">${order.total_price.toFixed(2)}</div>
                   </div>
+                </div>
+
+                <div className="mt-4 rounded-[1.5rem] border border-white/10 bg-background/30 p-4 text-sm text-muted-foreground">
+                  <div>
+                    {order.address_line}, {order.city}, {order.state} - {order.postal_code}
+                  </div>
+                  {order.notes ? <div className="mt-2">Customer note: {order.notes}</div> : null}
+                  {order.admin_notes ? <div className="mt-2">AuraSport note: {order.admin_notes}</div> : null}
+                </div>
+
+                <div className="mt-4 flex justify-end">
+                  <Link
+                    to="/orders/$orderId"
+                    params={{ orderId: String(order.id) }}
+                    className="rounded-full border border-white/10 px-4 py-2 text-sm font-semibold transition hover:bg-white/5"
+                  >
+                    View full request
+                  </Link>
                 </div>
 
                 <div className="mt-6 grid gap-4">
