@@ -26,6 +26,8 @@ function ShopPage() {
   const [submittingId, setSubmittingId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
+  const [sort, setSort] = useState("featured");
+  const [priceRange, setPriceRange] = useState("all");
 
   useEffect(() => {
     async function load() {
@@ -47,13 +49,32 @@ function ShopPage() {
   }, []);
 
   const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
-      const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase().trim());
+    const normalizedSearch = search.toLowerCase().trim();
+
+    const filtered = products.filter((product) => {
+      const matchesSearch = product.name.toLowerCase().includes(normalizedSearch);
       const matchesCategory =
         category === "all" || product.category?.name.toLowerCase() === category.toLowerCase();
-      return matchesSearch && matchesCategory;
+      const matchesPrice =
+        priceRange === "all" ||
+        (priceRange === "under-60" && product.price < 60) ||
+        (priceRange === "60-100" && product.price >= 60 && product.price <= 100) ||
+        (priceRange === "above-100" && product.price > 100);
+      return matchesSearch && matchesCategory && matchesPrice;
     });
-  }, [category, products, search]);
+
+    if (sort === "price-low") {
+      return [...filtered].sort((a, b) => a.price - b.price);
+    }
+    if (sort === "price-high") {
+      return [...filtered].sort((a, b) => b.price - a.price);
+    }
+    if (sort === "name") {
+      return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    return filtered;
+  }, [category, priceRange, products, search, sort]);
 
   async function addToCart(productId: number) {
     if (!token) {
@@ -97,7 +118,7 @@ function ShopPage() {
           </div>
         </div>
 
-        <section className="mt-10 grid gap-4 rounded-[2rem] border border-white/10 bg-card/50 p-5 md:grid-cols-[1fr_220px]">
+        <section className="mt-10 grid gap-4 rounded-[2rem] border border-white/10 bg-card/50 p-5 md:grid-cols-2 xl:grid-cols-[1.2fr_220px_220px_220px]">
           <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-background/60 px-4 py-3">
             <Search className="h-4 w-4 text-muted-foreground" />
             <input
@@ -119,7 +140,45 @@ function ShopPage() {
               </option>
             ))}
           </select>
+          <select
+            value={priceRange}
+            onChange={(event) => setPriceRange(event.target.value)}
+            className="rounded-2xl border border-white/10 bg-background/60 px-4 py-3 text-sm outline-none"
+          >
+            <option value="all">All prices</option>
+            <option value="under-60">Under $60</option>
+            <option value="60-100">$60 to $100</option>
+            <option value="above-100">Above $100</option>
+          </select>
+          <select
+            value={sort}
+            onChange={(event) => setSort(event.target.value)}
+            className="rounded-2xl border border-white/10 bg-background/60 px-4 py-3 text-sm outline-none"
+          >
+            <option value="featured">Featured</option>
+            <option value="price-low">Price: low to high</option>
+            <option value="price-high">Price: high to low</option>
+            <option value="name">Name: A to Z</option>
+          </select>
         </section>
+
+        <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+          <span>{filteredProducts.length} products</span>
+          {(search || category !== "all" || priceRange !== "all" || sort !== "featured") && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                setCategory("all");
+                setPriceRange("all");
+                setSort("featured");
+              }}
+              className="rounded-full border border-white/10 px-4 py-2 font-medium text-foreground transition hover:bg-white/5"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
 
         {loading ? (
           <div className="flex min-h-[40vh] items-center justify-center">
@@ -149,20 +208,29 @@ function ShopPage() {
                     </div>
                     <div className="text-lg font-black">${product.price.toFixed(2)}</div>
                   </div>
-                  <button
-                    onClick={() => void addToCart(product.id)}
-                    disabled={submittingId === product.id}
-                    className="flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold uppercase tracking-[0.2em] text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
-                  >
-                    {submittingId === product.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        <ShoppingBag className="h-4 w-4" />
-                        Add to cart
-                      </>
-                    )}
-                  </button>
+                  <div className="flex gap-3">
+                    <Link
+                      to="/shop/$productId"
+                      params={{ productId: String(product.id) }}
+                      className="flex-1 rounded-full border border-white/10 px-5 py-3 text-center text-sm font-semibold transition hover:bg-white/5"
+                    >
+                      View details
+                    </Link>
+                    <button
+                      onClick={() => void addToCart(product.id)}
+                      disabled={submittingId === product.id}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold uppercase tracking-[0.2em] text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
+                    >
+                      {submittingId === product.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <ShoppingBag className="h-4 w-4" />
+                          Add to cart
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </article>
             ))}
