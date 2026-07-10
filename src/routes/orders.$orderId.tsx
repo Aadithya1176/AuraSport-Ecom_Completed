@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Navbar } from "@/components/landing/Navbar";
+import { OrderStatusBadge, OrderStatusTracker } from "@/components/orders/OrderStatusTracker";
 import { apiRequest, getImageUrl, type Order } from "@/lib/api";
 import { useAuth } from "@/lib/useAuth";
 
@@ -83,12 +84,21 @@ function OrderDetailPage() {
             <aside className="space-y-6">
               <section className="rounded-[2rem] border border-white/10 bg-card/70 p-6">
                 <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary">Status</p>
-                <h2 className="mt-4 text-3xl font-black capitalize">{order.status}</h2>
+                <div className="mt-4">
+                  <OrderStatusBadge status={order.status} />
+                </div>
                 <p className="mt-4 text-sm text-muted-foreground">
                   Preferred contact: {order.contact_preference}
                 </p>
                 <p className="mt-2 text-sm text-muted-foreground">Phone: {order.phone_number}</p>
                 <p className="mt-6 text-2xl font-black">${order.total_price.toFixed(2)}</p>
+              </section>
+
+              <section className="rounded-[2rem] border border-white/10 bg-card/70 p-6">
+                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary">Tracking</p>
+                <div className="mt-4">
+                  <OrderStatusTracker status={order.status} />
+                </div>
               </section>
 
               <section className="rounded-[2rem] border border-white/10 bg-card/70 p-6">

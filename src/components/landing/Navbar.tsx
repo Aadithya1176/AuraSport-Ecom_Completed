@@ -11,6 +11,7 @@ const links = [
   { label: "Shop", to: "/shop" as const },
   { label: "Cart", to: "/cart" as const },
   { label: "Orders", to: "/orders" as const },
+  { label: "Help", to: "/help" as const },
 ];
 
 export function Navbar() {

@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Navbar } from "@/components/landing/Navbar";
+import { OrderStatusBadge, OrderStatusTracker } from "@/components/orders/OrderStatusTracker";
 import { apiRequest, getImageUrl, type Order } from "@/lib/api";
 import { useAuth } from "@/lib/useAuth";
 
@@ -92,7 +93,9 @@ function OrdersPage() {
                     <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary">
                       Request #{order.id}
                     </p>
-                    <h2 className="mt-2 text-2xl font-bold capitalize">{order.status}</h2>
+                    <div className="mt-3">
+                      <OrderStatusBadge status={order.status} />
+                    </div>
                     <p className="mt-2 text-sm text-muted-foreground">
                       {order.customer_name} | {order.contact_preference} | {order.phone_number}
                     </p>
@@ -109,6 +112,10 @@ function OrdersPage() {
                   </div>
                   {order.notes ? <div className="mt-2">Customer note: {order.notes}</div> : null}
                   {order.admin_notes ? <div className="mt-2">AuraSport note: {order.admin_notes}</div> : null}
+                </div>
+
+                <div className="mt-4">
+                  <OrderStatusTracker status={order.status} />
                 </div>
 
                 <div className="mt-4 flex justify-end">
