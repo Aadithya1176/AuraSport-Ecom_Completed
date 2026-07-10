@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { LogOut, ReceiptText, Search, ShoppingBag, Shield, User, Menu, X } from "lucide-react";
+import { Heart, LogOut, ReceiptText, Search, ShoppingBag, Shield, User, Menu, X } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 
 import { apiRequest, type CartItem } from "@/lib/api";
@@ -11,6 +11,7 @@ const links = [
   { label: "Shop", to: "/shop" as const },
   { label: "Cart", to: "/cart" as const },
   { label: "Orders", to: "/orders" as const },
+  { label: "Wishlist", to: "/wishlist" as const },
   { label: "Help", to: "/help" as const },
 ];
 
@@ -157,6 +158,14 @@ export function Navbar() {
               >
                 <User className="h-4 w-4" />
                 Profile
+              </Link>
+              <Link
+                to="/wishlist"
+                aria-label="Wishlist"
+                className="hidden h-9 items-center gap-2 rounded-full border border-white/10 px-4 text-xs font-semibold uppercase tracking-wider text-foreground/80 transition hover:bg-white/10 md:inline-flex"
+              >
+                <Heart className="h-4 w-4" />
+                Wishlist
               </Link>
               <Link
                 to="/orders"

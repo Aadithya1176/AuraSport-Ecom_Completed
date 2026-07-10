@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WishlistRouteImport } from './routes/wishlist'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as OrdersRouteImport } from './routes/orders'
@@ -21,6 +22,11 @@ import { Route as OrdersOrderIdRouteImport } from './routes/orders.$orderId'
 import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
 import { Route as AdminCatalogRouteImport } from './routes/admin.catalog'
 
+const WishlistRoute = WishlistRouteImport.update({
+  id: '/wishlist',
+  path: '/wishlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ShopRoute = ShopRouteImport.update({
   id: '/shop',
   path: '/shop',
@@ -85,6 +91,7 @@ export interface FileRoutesByFullPath {
   '/orders': typeof OrdersRouteWithChildren
   '/profile': typeof ProfileRoute
   '/shop': typeof ShopRouteWithChildren
+  '/wishlist': typeof WishlistRoute
   '/admin/catalog': typeof AdminCatalogRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
@@ -98,6 +105,7 @@ export interface FileRoutesByTo {
   '/orders': typeof OrdersRouteWithChildren
   '/profile': typeof ProfileRoute
   '/shop': typeof ShopRouteWithChildren
+  '/wishlist': typeof WishlistRoute
   '/admin/catalog': typeof AdminCatalogRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
@@ -112,6 +120,7 @@ export interface FileRoutesById {
   '/orders': typeof OrdersRouteWithChildren
   '/profile': typeof ProfileRoute
   '/shop': typeof ShopRouteWithChildren
+  '/wishlist': typeof WishlistRoute
   '/admin/catalog': typeof AdminCatalogRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
@@ -127,6 +136,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/profile'
     | '/shop'
+    | '/wishlist'
     | '/admin/catalog'
     | '/admin/orders'
     | '/orders/$orderId'
@@ -140,6 +150,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/profile'
     | '/shop'
+    | '/wishlist'
     | '/admin/catalog'
     | '/admin/orders'
     | '/orders/$orderId'
@@ -153,6 +164,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/profile'
     | '/shop'
+    | '/wishlist'
     | '/admin/catalog'
     | '/admin/orders'
     | '/orders/$orderId'
@@ -167,12 +179,20 @@ export interface RootRouteChildren {
   OrdersRoute: typeof OrdersRouteWithChildren
   ProfileRoute: typeof ProfileRoute
   ShopRoute: typeof ShopRouteWithChildren
+  WishlistRoute: typeof WishlistRoute
   AdminCatalogRoute: typeof AdminCatalogRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/wishlist': {
+      id: '/wishlist'
+      path: '/wishlist'
+      fullPath: '/wishlist'
+      preLoaderRoute: typeof WishlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/shop': {
       id: '/shop'
       path: '/shop'
@@ -282,6 +302,7 @@ const rootRouteChildren: RootRouteChildren = {
   OrdersRoute: OrdersRouteWithChildren,
   ProfileRoute: ProfileRoute,
   ShopRoute: ShopRouteWithChildren,
+  WishlistRoute: WishlistRoute,
   AdminCatalogRoute: AdminCatalogRoute,
   AdminOrdersRoute: AdminOrdersRoute,
 }

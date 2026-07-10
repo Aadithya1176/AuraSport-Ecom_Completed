@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Search, ShoppingBag } from "lucide-react";
+import { Heart, Loader2, Search, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 
 import { Navbar } from "@/components/landing/Navbar";
 import { apiRequest, type Category, getImageUrl, type Product } from "@/lib/api";
 import { useAuth } from "@/lib/useAuth";
+import { useWishlist } from "@/lib/useWishlist";
 
 export const Route = createFileRoute("/shop")({
   component: ShopPage,
@@ -20,6 +21,7 @@ export const Route = createFileRoute("/shop")({
 function ShopPage() {
   const navigate = useNavigate();
   const { token, user } = useAuth();
+  const { isWishlisted, toggleWishlist } = useWishlist();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -209,6 +211,20 @@ function ShopPage() {
                     <div className="text-lg font-black">${product.price.toFixed(2)}</div>
                   </div>
                   <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nowSaved = toggleWishlist(product.id);
+                        toast.success(nowSaved ? "Saved to wishlist" : "Removed from wishlist");
+                      }}
+                      className={`grid h-12 w-12 place-items-center rounded-full border transition ${
+                        isWishlisted(product.id)
+                          ? "border-primary/30 bg-primary/10 text-primary"
+                          : "border-white/10 text-foreground hover:bg-white/5"
+                      }`}
+                    >
+                      <Heart className={`h-4 w-4 ${isWishlisted(product.id) ? "fill-current" : ""}`} />
+                    </button>
                     <Link
                       to="/shop/$productId"
                       params={{ productId: String(product.id) }}

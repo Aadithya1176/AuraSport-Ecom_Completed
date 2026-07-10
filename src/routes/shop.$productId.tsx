@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Loader2, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Heart, Loader2, ShoppingBag } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Navbar } from "@/components/landing/Navbar";
 import { apiRequest, getImageUrl, type Product } from "@/lib/api";
 import { useAuth } from "@/lib/useAuth";
+import { useWishlist } from "@/lib/useWishlist";
 
 export const Route = createFileRoute("/shop/$productId")({
   component: ProductDetailPage,
@@ -21,6 +22,7 @@ function ProductDetailPage() {
   const navigate = useNavigate();
   const { productId } = Route.useParams();
   const { token } = useAuth();
+  const { isWishlisted, toggleWishlist } = useWishlist();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -110,6 +112,23 @@ function ProductDetailPage() {
               </div>
 
               <div className="mt-8 flex flex-wrap gap-3">
+                <button
+                  onClick={() => {
+                    if (!product) {
+                      return;
+                    }
+                    const nowSaved = toggleWishlist(product.id);
+                    toast.success(nowSaved ? "Saved to wishlist" : "Removed from wishlist");
+                  }}
+                  className={`inline-flex items-center gap-2 rounded-full border px-6 py-3 text-sm font-semibold transition ${
+                    product && isWishlisted(product.id)
+                      ? "border-primary/30 bg-primary/10 text-primary"
+                      : "border-white/10 hover:bg-white/5"
+                  }`}
+                >
+                  <Heart className={`h-4 w-4 ${product && isWishlisted(product.id) ? "fill-current" : ""}`} />
+                  {product && isWishlisted(product.id) ? "Saved" : "Save"}
+                </button>
                 <button
                   onClick={() => void addToCart()}
                   disabled={adding}
