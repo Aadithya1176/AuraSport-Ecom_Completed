@@ -1,43 +1,40 @@
 # AuraSport Backend
 
-Production-style localhost backend for the AuraSport e-commerce project.
+FastAPI backend for the AuraSport request-based storefront.
 
 ## Structure
 
 ```text
 aurasport-backend/
-├── alembic.ini
-├── migrations/
-├── logs/
-├── uploads/
-├── requirements.txt
-└── app/
-    ├── auth.py
-    ├── database.py
-    ├── init_db.py
-    ├── main.py
-    ├── models.py
-    ├── schemas.py
-    ├── core/
-    ├── middleware/
-    ├── routes/
-    ├── services/
-    └── utils/
+|-- alembic.ini
+|-- migrations/
+|-- logs/
+|-- uploads/
+|-- requirements.txt
+`-- app/
+    |-- auth.py
+    |-- database.py
+    |-- init_db.py
+    |-- main.py
+    |-- models.py
+    |-- schemas.py
+    |-- core/
+    |-- middleware/
+    |-- routes/
+    |-- services/
+    `-- utils/
 ```
 
 ## Features
 
 - JWT authentication with role support
-- RBAC for admin-only product management
+- Admin-only catalog and request management
 - Product image upload with static file serving
-- Product search with combinable filters
-- Nested cart and order responses
-- Request logging middleware
-- File + console logging
-- Global exception handling
-- Alembic migrations
-- Pydantic validation
-- CORS for React frontend at `http://localhost:5173`
+- Manual order request flow instead of online payments
+- Profile saving and delivery autofill support
+- Product filtering and search endpoints
+- Alembic support for migrations
+- Runtime schema backfill for local SQLite development
 
 ## Install
 
@@ -47,41 +44,39 @@ From `aurasport-backend`:
 ..\venv\Scripts\python -m pip install -r requirements.txt
 ```
 
-If you are using a separate backend virtual environment, install the same dependencies there.
-
 ## Environment
 
-Create or update `app/.env`:
+Copy `app/.env.example` to `app/.env` and update the values:
 
 ```env
-DATABASE_URL=postgresql://postgres:yourpassword@localhost/aurasport
-SECRET_KEY=mysecretkey123
+DATABASE_URL=sqlite:///../aurasport.db
+SECRET_KEY=change-this-to-a-long-random-secret
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 MAX_UPLOAD_SIZE_BYTES=5242880
 ```
 
+Notes:
+
+- `SECRET_KEY` is required.
+- For production, replace SQLite with PostgreSQL.
+- `CORS_ORIGINS` should match your deployed frontend URL.
+
 ## Database
 
-Run the initial migration:
+Local development can use the automatic startup initialization.
+
+If you want Alembic-managed migrations:
 
 ```bash
 ..\venv\Scripts\python -m alembic upgrade head
 ```
 
-If you already have an existing database and only need Alembic to track the current schema:
+If the current database already matches the existing migrations:
 
 ```bash
 ..\venv\Scripts\python -m alembic stamp head
-```
-
-## Future Migrations
-
-After changing SQLAlchemy models:
-
-```bash
-..\venv\Scripts\python -m alembic revision --autogenerate -m "describe change"
-..\venv\Scripts\python -m alembic upgrade head
 ```
 
 ## Run
@@ -92,13 +87,19 @@ Start the API from `aurasport-backend`:
 ..\venv\Scripts\python -m uvicorn app.main:app --reload
 ```
 
-Swagger UI:
+API docs:
 
 ```text
 http://127.0.0.1:8000/docs
 ```
 
-Uploaded product images:
+Health endpoint:
+
+```text
+http://127.0.0.1:8000/health
+```
+
+Uploads:
 
 ```text
 http://127.0.0.1:8000/uploads/<filename>
@@ -106,212 +107,88 @@ http://127.0.0.1:8000/uploads/<filename>
 
 ## Admin Setup
 
-Register a user normally in Swagger with `/register`, then promote that user to admin:
+Register a normal user first, then promote that account to admin:
 
 ```bash
 ..\venv\Scripts\python -m app.utils.make_admin yourmail@example.com
 ```
 
-Then log in again using `/login`. The token from that login can be used for admin-only product endpoints.
+After promotion, log in again so the JWT token includes the admin role.
 
-## Swagger Testing Flow
+## Main Request Flow
 
-Use this order in Swagger:
-
-### 1. Register User
+### 1. Register
 
 `POST /register`
-
-```json
-{
-  "username": "aadhi1176",
-  "email": "aadhi@example.com",
-  "password": "secret123"
-}
-```
 
 ### 2. Login
 
 `POST /login`
 
-```json
-{
-  "email": "aadhi@example.com",
-  "password": "secret123"
-}
-```
+### 3. Create or update profile
 
-Copy the `access_token`, click `Authorize` in Swagger, and enter:
+`GET /me`
 
-```text
-Bearer <your_access_token>
-```
+`PATCH /me`
 
-### 3. Create Category
-
-`POST /categories`
-
-```json
-{
-  "name": "Football"
-}
-```
-
-### 4. Promote User to Admin
-
-Run:
-
-```bash
-..\venv\Scripts\python -m app.utils.make_admin aadhi@example.com
-```
-
-### 5. Login Again as Admin
-
-`POST /login`
-
-```json
-{
-  "email": "aadhi@example.com",
-  "password": "secret123"
-}
-```
-
-Authorize Swagger again with the new token.
-
-### 6. Create Product
-
-`POST /products`
-
-This endpoint uses `multipart/form-data`, not JSON.
-
-Swagger form values:
-
-```text
-name = Nike Football
-price = 1200
-category_id = 1
-image = <choose image file>
-```
-
-### 7. Update Product
-
-`PUT /products/{product_id}`
-
-Swagger form values:
-
-```text
-name = Adidas Football
-price = 1500
-category_id = 1
-image = <optional new image file>
-```
-
-### 8. Partially Update Product
-
-`PATCH /products/{product_id}`
-
-Swagger form values:
-
-```text
-price = 1800
-image = <optional new image file>
-```
-
-### 9. List Products
+### 4. Browse catalog
 
 `GET /products`
 
-Example query:
-
-```text
-/products?limit=20&offset=0&min_price=500&max_price=5000&sort=-price
-```
-
-### 10. Search Products
-
 `GET /products/search`
 
-Examples:
+`GET /categories`
 
-```text
-/products/search?name=football
-/products/search?category=football
-/products/search?name=football&min_price=1000&max_price=2000
-/products/search?name=football&category=football&min_price=500&max_price=3000
-```
-
-### 11. Add to Cart
+### 5. Add cart items
 
 `POST /carts`
 
-```json
-{
-  "qty": 2,
-  "product_id": 1
-}
-```
-
-### 12. Get Cart
-
 `GET /cart`
 
-Example response:
+`PATCH /cart/{cart_item_id}`
 
-```json
-[
-  {
-    "id": 1,
-    "qty": 2,
-    "product": {
-      "id": 1,
-      "name": "Nike Football",
-      "price": 1200,
-      "image_url": "/uploads/sample.jpg"
-    }
-  }
-]
-```
+`DELETE /cart/{cart_item_id}`
 
-### 13. Checkout
+### 6. Submit request
 
-`POST /orders/checkout`
+`POST /orders/request`
 
-No request body required.
+This includes customer name, phone number, address, contact preference, and optional notes.
 
-Example response:
-
-```json
-{
-  "id": 1,
-  "total_price": 2400,
-  "status": "pending",
-  "order_items": [
-    {
-      "id": 1,
-      "quantity": 2,
-      "price": 1200,
-      "product": {
-        "id": 1,
-        "name": "Nike Football",
-        "price": 1200,
-        "image_url": "/uploads/sample.jpg"
-      }
-    }
-  ]
-}
-```
-
-### 14. List Orders
+### 7. Track requests
 
 `GET /orders`
 
-### 15. Get One Order
-
 `GET /orders/{order_id}`
 
-## Notes
+### 8. Admin request management
 
-- `POST /products`, `PUT /products/{id}`, `PATCH /products/{id}`, and `DELETE /products/{id}` require an admin token.
-- `GET /products`, `GET /products/search`, `GET /products/{id}`, cart endpoints, and order endpoints work for authenticated users.
-- Logs are written to `logs/app.log`.
-- Uploaded files are stored in `uploads/`.
+`GET /admin/orders`
+
+`GET /admin/orders/{order_id}`
+
+`PATCH /admin/orders/{order_id}`
+
+### 9. Admin catalog management
+
+`POST /categories`
+
+`PUT /categories/{category_id}`
+
+`DELETE /categories/{category_id}`
+
+`POST /products`
+
+`PUT /products/{product_id}`
+
+`PATCH /products/{product_id}`
+
+`DELETE /products/{product_id}`
+
+## Production Notes
+
+- Replace SQLite with PostgreSQL.
+- Replace local `uploads/` with cloud storage.
+- Use a strong production `SECRET_KEY`.
+- Lock `CORS_ORIGINS` to real frontend domains only.
+- Prefer full Alembic migrations instead of relying on local auto-backfill behavior long-term.

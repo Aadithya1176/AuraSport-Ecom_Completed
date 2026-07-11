@@ -47,6 +47,8 @@ If your frontend needs to point to a different backend URL, set:
 VITE_API_URL=http://127.0.0.1:8000
 ```
 
+You can copy `.env.example` to `.env` if you want a local frontend env file.
+
 ### 2. Backend
 
 Create and use the Python virtual environment if needed, then install backend dependencies and run Uvicorn from the project root:
@@ -92,6 +94,22 @@ http://127.0.0.1:8000/docs
 - Backend: Render, Railway, or Fly.io
 - Database: PostgreSQL on Render, Railway, Neon, or Supabase
 - File storage: Cloudinary or Supabase Storage
+
+## Environment Files
+
+- Frontend example: `.env.example`
+- Backend example: `aurasport-backend/app/.env.example`
+
+## Admin Account Setup
+
+1. Register a normal user from the app or Swagger.
+2. Promote that user to admin from `aurasport-backend`:
+
+```bash
+..\venv\Scripts\python -m app.utils.make_admin yourmail@example.com
+```
+
+3. Log in again so the token contains the admin role.
 
 ## Admin Workflow
 
