@@ -1,87 +1,35 @@
 import logging
+from pathlib import Path
 
-import sqlalchemy as sa
+from alembic import command
+from alembic.config import Config
 from sqlalchemy.orm import Session
 
-from .database import Base, SessionLocal, engine
+from .core.config import get_settings
+from .database import SessionLocal
 from .models import Cart, Categories, OrderItems, Orders, Products, Users  # noqa: F401
 from .utils.files import ensure_runtime_directories
 
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 
-def ensure_user_profile_columns() -> None:
-    bind = engine.connect()
-    try:
-        inspector = sa.inspect(bind)
-        if "users" not in inspector.get_table_names():
-            return
-
-        existing_columns = {column["name"] for column in inspector.get_columns("users")}
-        required_columns: list[tuple[str, str, str | None]] = [
-            ("full_name", "VARCHAR(120)", None),
-            ("phone_number", "VARCHAR(30)", None),
-            ("address_line", "VARCHAR(255)", None),
-            ("city", "VARCHAR(100)", None),
-            ("state", "VARCHAR(100)", None),
-            ("postal_code", "VARCHAR(20)", None),
-            ("preferred_contact", "VARCHAR(20)", "'whatsapp'"),
-        ]
-
-        for column_name, column_type, default_value in required_columns:
-            if column_name in existing_columns:
-                continue
-
-            default_clause = f" DEFAULT {default_value}" if default_value is not None else ""
-            bind.execute(
-                sa.text(
-                    f"ALTER TABLE users ADD COLUMN {column_name} {column_type}{default_clause}"
-                )
-            )
-            logger.info("Added missing users.%s column for saved profile data", column_name)
-    finally:
-        bind.commit()
-        bind.close()
-
-
-def ensure_order_request_columns() -> None:
-    bind = engine.connect()
-    try:
-        inspector = sa.inspect(bind)
-        if "orders" not in inspector.get_table_names():
-            return
-
-        existing_columns = {column["name"] for column in inspector.get_columns("orders")}
-        required_columns: list[tuple[str, str, str | None]] = [
-            ("customer_name", "VARCHAR(120)", "'Customer Name'"),
-            ("phone_number", "VARCHAR(30)", "'0000000000'"),
-            ("address_line", "VARCHAR(255)", "'Address pending'"),
-            ("city", "VARCHAR(100)", "'City'"),
-            ("state", "VARCHAR(100)", "'State'"),
-            ("postal_code", "VARCHAR(20)", "'000000'"),
-            ("contact_preference", "VARCHAR(20)", "'whatsapp'"),
-            ("notes", "VARCHAR(500)", None),
-            ("admin_notes", "VARCHAR(500)", None),
-        ]
-
-        for column_name, column_type, default_value in required_columns:
-            if column_name in existing_columns:
-                continue
-
-            default_clause = f" DEFAULT {default_value}" if default_value is not None else ""
-            bind.execute(
-                sa.text(
-                    f"ALTER TABLE orders ADD COLUMN {column_name} {column_type}{default_clause}"
-                )
-            )
-            logger.info("Added missing orders.%s column for request-based order flow", column_name)
-    finally:
-        bind.commit()
-        bind.close()
+def run_migrations() -> None:
+    project_dir = Path(__file__).resolve().parents[1]
+    alembic_ini_path = project_dir / "alembic.ini"
+    alembic_cfg = Config(str(alembic_ini_path))
+    alembic_cfg.set_main_option("script_location", str(project_dir / "migrations"))
+    alembic_cfg.set_main_option("sqlalchemy.url", settings.database_url)
+    command.upgrade(alembic_cfg, "head")
+    logger.info("Database migrations applied successfully")
 
 
 def seed_demo_data() -> None:
+    if not settings.seed_demo_data:
+        logger.info("Skipping demo data seeding because SEED_DEMO_DATA is disabled")
+        return
+
     db: Session = SessionLocal()
     try:
         has_products = db.query(Products.id).first() is not None
@@ -115,11 +63,9 @@ def seed_demo_data() -> None:
 
 def init_db() -> None:
     ensure_runtime_directories()
-    Base.metadata.create_all(bind=engine)
-    ensure_user_profile_columns()
-    ensure_order_request_columns()
+    run_migrations()
     seed_demo_data()
-    logger.info("Database tables created using SQLAlchemy metadata. Prefer Alembic migrations for schema changes.")
+    logger.info("Database initialization completed using Alembic migrations.")
 
 
 if __name__ == "__main__":

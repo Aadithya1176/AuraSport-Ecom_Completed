@@ -49,12 +49,14 @@ From `aurasport-backend`:
 Copy `app/.env.example` to `app/.env` and update the values:
 
 ```env
+APP_ENV=development
 DATABASE_URL=sqlite:///../aurasport.db
 SECRET_KEY=change-this-to-a-long-random-secret
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 MAX_UPLOAD_SIZE_BYTES=5242880
+SEED_DEMO_DATA=true
 ```
 
 Notes:
@@ -65,7 +67,7 @@ Notes:
 
 ## Database
 
-Local development can use the automatic startup initialization.
+Local development now uses Alembic-backed startup initialization.
 
 If you want Alembic-managed migrations:
 
@@ -191,4 +193,18 @@ This includes customer name, phone number, address, contact preference, and opti
 - Replace local `uploads/` with cloud storage.
 - Use a strong production `SECRET_KEY`.
 - Lock `CORS_ORIGINS` to real frontend domains only.
-- Prefer full Alembic migrations instead of relying on local auto-backfill behavior long-term.
+- Alembic is the schema source of truth.
+
+## SQLite to PostgreSQL Migration
+
+After creating the PostgreSQL database and running Alembic migrations, move existing SQLite data with:
+
+```bash
+..\venv\Scripts\python -m app.utils.migrate_sqlite_to_postgres --sqlite-path ..\aurasport.db --postgres-url postgresql://postgres:password@localhost/aurasport
+```
+
+If you want to wipe the target before importing:
+
+```bash
+..\venv\Scripts\python -m app.utils.migrate_sqlite_to_postgres --sqlite-path ..\aurasport.db --postgres-url postgresql://postgres:password@localhost/aurasport --drop-existing
+```

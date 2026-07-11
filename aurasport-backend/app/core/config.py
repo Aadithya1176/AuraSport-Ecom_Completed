@@ -15,6 +15,7 @@ load_dotenv(ENV_PATH)
 
 @dataclass(frozen=True)
 class Settings:
+    app_env: str
     database_url: str
     secret_key: str
     algorithm: str
@@ -25,6 +26,7 @@ class Settings:
     log_file: Path
     allowed_image_extensions: tuple[str, ...]
     max_upload_size_bytes: int
+    seed_demo_data: bool
 
 
 @lru_cache
@@ -47,6 +49,7 @@ def get_settings() -> Settings:
     logs_dir = PROJECT_DIR / "logs"
 
     return Settings(
+        app_env=os.getenv("APP_ENV", "development").strip().lower() or "development",
         database_url=database_url,
         secret_key=secret_key,
         algorithm=algorithm,
@@ -57,4 +60,5 @@ def get_settings() -> Settings:
         log_file=logs_dir / "app.log",
         allowed_image_extensions=(".jpg", ".jpeg", ".png", ".webp"),
         max_upload_size_bytes=int(os.getenv("MAX_UPLOAD_SIZE_BYTES", str(5 * 1024 * 1024))),
+        seed_demo_data=os.getenv("SEED_DEMO_DATA", "true").strip().lower() == "true",
     )

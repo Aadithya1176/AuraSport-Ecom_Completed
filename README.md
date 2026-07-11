@@ -87,6 +87,7 @@ http://127.0.0.1:8000/docs
 - Payments are intentionally not included.
 - Wishlist is browser-local, not server-synced.
 - For production, move from SQLite to a hosted database and replace local uploads with managed storage.
+- Alembic migrations are now the expected schema source of truth for backend changes.
 
 ## Recommended Deployment Direction
 
@@ -110,6 +111,19 @@ http://127.0.0.1:8000/docs
 ```
 
 3. Log in again so the token contains the admin role.
+
+## Database Migration Path
+
+For a real production move from SQLite to PostgreSQL:
+
+1. Point the backend `DATABASE_URL` to PostgreSQL.
+2. Run Alembic migrations to create the target schema.
+3. Use the backend migration script to copy data from the old SQLite database:
+
+```bash
+cd aurasport-backend
+..\venv\Scripts\python -m app.utils.migrate_sqlite_to_postgres --sqlite-path ..\aurasport.db --postgres-url postgresql://postgres:password@localhost/aurasport
+```
 
 ## Admin Workflow
 
