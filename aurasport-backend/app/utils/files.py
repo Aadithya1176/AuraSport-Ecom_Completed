@@ -1,8 +1,9 @@
-import shutil
+import mimetypes
 from pathlib import Path
 from uuid import uuid4
 
 from fastapi import HTTPException, UploadFile
+from supabase import create_client
 
 from ..core.config import get_settings
 
@@ -22,6 +23,13 @@ def _validate_extension(filename: str) -> str:
     return extension
 
 
+def get_supabase_client():
+    settings = get_settings()
+    if not settings.supabase_url or not settings.supabase_key:
+        raise HTTPException(status_code=500, detail="Supabase configuration is missing in backend")
+    return create_client(settings.supabase_url, settings.supabase_key)
+
+
 def save_product_image(upload: UploadFile | None) -> str | None:
     if upload is None or not upload.filename:
         return None
@@ -29,21 +37,32 @@ def save_product_image(upload: UploadFile | None) -> str | None:
     settings = get_settings()
     extension = _validate_extension(upload.filename)
     generated_name = f"{uuid4().hex}{extension}"
-    destination = settings.uploads_dir / generated_name
 
-    with destination.open("wb") as file_object:
-        shutil.copyfileobj(upload.file, file_object)
+    supabase = get_supabase_client()
+    file_bytes = upload.file.read()
 
-    return f"/uploads/{generated_name}"
+    content_type, _ = mimetypes.guess_type(upload.filename)
+    if not content_type:
+        content_type = "application/octet-stream"
+
+    supabase.storage.from_("products").upload(
+        path=generated_name,
+        file=file_bytes,
+        file_options={"content-type": content_type}
+    )
+
+    res = supabase.storage.from_("products").get_public_url(generated_name)
+    return res
 
 
 def delete_product_image(image_url: str | None) -> None:
     if not image_url:
         return
 
-    settings = get_settings()
-    image_name = image_url.removeprefix("/uploads/")
-    image_path = settings.uploads_dir / image_name
-
-    if image_path.exists():
-        image_path.unlink()
+    try:
+        if "/products/" in image_url:
+            image_name = image_url.split("/products/")[-1]
+            supabase = get_supabase_client()
+            supabase.storage.from_("products").remove([image_name])
+    except Exception as e:
+        print(f"Failed to delete image {image_url} from Supabase: {e}")

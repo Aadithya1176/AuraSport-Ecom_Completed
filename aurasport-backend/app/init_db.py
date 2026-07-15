@@ -47,12 +47,12 @@ def seed_demo_data() -> None:
 
         db.add_all(
             [
-                Products(name="Velocity Sprint Tee", price=49.0, category_id=categories[0].id),
-                Products(name="CoreLift Hoodie", price=89.0, category_id=categories[1].id),
-                Products(name="Matchday Elite Ball", price=59.0, category_id=categories[2].id),
-                Products(name="Summit Trail Pack", price=109.0, category_id=categories[3].id),
-                Products(name="AeroFlex Leggings", price=72.0, category_id=categories[1].id),
-                Products(name="StreetRun Sneakers", price=134.0, category_id=categories[0].id),
+                Products(name="Velocity Sprint Tee", price=49.0, category_id=categories[0].id, image_url="/products/velocity_sprint_tee.png"),
+                Products(name="CoreLift Hoodie", price=89.0, category_id=categories[1].id, image_url="/products/corelift_hoodie.png"),
+                Products(name="Matchday Elite Ball", price=59.0, category_id=categories[2].id, image_url="/products/matchday_elite_ball.png"),
+                Products(name="Summit Trail Pack", price=109.0, category_id=categories[3].id, image_url="/products/summit_trail_pack.png"),
+                Products(name="AeroFlex Leggings", price=72.0, category_id=categories[1].id, image_url="/products/aeroflex_leggings.png"),
+                Products(name="StreetRun Sneakers", price=134.0, category_id=categories[0].id, image_url="/products/streetrun_sneakers.png"),
             ]
         )
         db.commit()

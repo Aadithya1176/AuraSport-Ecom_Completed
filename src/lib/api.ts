@@ -138,7 +138,7 @@ export function getImageUrl(imageUrl: string | null | undefined): string {
     return "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=1200&q=80";
   }
 
-  if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+  if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://") || imageUrl.startsWith("/products/")) {
     return imageUrl;
   }
 

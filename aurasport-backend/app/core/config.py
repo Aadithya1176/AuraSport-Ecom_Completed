@@ -27,6 +27,8 @@ class Settings:
     allowed_image_extensions: tuple[str, ...]
     max_upload_size_bytes: int
     seed_demo_data: bool
+    supabase_url: str
+    supabase_key: str
 
 
 @lru_cache
@@ -45,6 +47,11 @@ def get_settings() -> Settings:
     if not secret_key:
         raise RuntimeError("SECRET_KEY environment variable is not set in aurasport-backend/app/.env")
 
+    supabase_url = os.getenv("SUPABASE_URL", "")
+    supabase_key = os.getenv("SUPABASE_KEY", "")
+    if not supabase_url or not supabase_key:
+        print("Warning: SUPABASE_URL or SUPABASE_KEY environment variable is not set")
+
     uploads_dir = PROJECT_DIR / "uploads"
     logs_dir = PROJECT_DIR / "logs"
 
@@ -61,4 +68,6 @@ def get_settings() -> Settings:
         allowed_image_extensions=(".jpg", ".jpeg", ".png", ".webp"),
         max_upload_size_bytes=int(os.getenv("MAX_UPLOAD_SIZE_BYTES", str(5 * 1024 * 1024))),
         seed_demo_data=os.getenv("SEED_DEMO_DATA", "true").strip().lower() == "true",
+        supabase_url=supabase_url.strip(),
+        supabase_key=supabase_key.strip(),
     )
