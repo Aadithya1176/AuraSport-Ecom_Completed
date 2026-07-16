@@ -10,8 +10,9 @@ from ..core.config import get_settings
 
 def ensure_runtime_directories() -> None:
     settings = get_settings()
-    settings.uploads_dir.mkdir(parents=True, exist_ok=True)
-    settings.logs_dir.mkdir(parents=True, exist_ok=True)
+    if settings.app_env != "production":
+        settings.uploads_dir.mkdir(parents=True, exist_ok=True)
+        settings.logs_dir.mkdir(parents=True, exist_ok=True)
 
 
 def _validate_extension(filename: str) -> str:
