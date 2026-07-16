@@ -16,6 +16,10 @@
       "handle": "filesystem"
     },
     {
+      "src": "/api/(.*)",
+      "dest": "/api/index"
+    },
+    {
       "src": "/(.*)",
       "dest": "/__server"
     }
