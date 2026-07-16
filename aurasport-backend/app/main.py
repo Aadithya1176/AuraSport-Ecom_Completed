@@ -34,13 +34,16 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=["*"] if settings.app_env == "production" else settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 app.add_middleware(RequestLoggingMiddleware)
-app.mount("/uploads", StaticFiles(directory=settings.uploads_dir), name="uploads")
+
+# Only mount local uploads dir in development; production uses Supabase storage
+if settings.app_env != "production" and settings.uploads_dir.exists():
+    app.mount("/uploads", StaticFiles(directory=settings.uploads_dir), name="uploads")
 
 register_exception_handlers(app)
 

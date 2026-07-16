@@ -1,12 +1,10 @@
 import logging
 from pathlib import Path
 
-from alembic import command
-from alembic.config import Config
 from sqlalchemy.orm import Session
 
 from .core.config import get_settings
-from .database import SessionLocal
+from .database import Base, SessionLocal, engine
 from .models import Cart, Categories, OrderItems, Orders, Products, Users  # noqa: F401
 from .utils.files import ensure_runtime_directories
 
@@ -16,13 +14,23 @@ settings = get_settings()
 
 
 def run_migrations() -> None:
-    project_dir = Path(__file__).resolve().parents[1]
-    alembic_ini_path = project_dir / "alembic.ini"
-    alembic_cfg = Config(str(alembic_ini_path))
-    alembic_cfg.set_main_option("script_location", str(project_dir / "migrations"))
-    alembic_cfg.set_main_option("sqlalchemy.url", settings.database_url)
-    command.upgrade(alembic_cfg, "head")
-    logger.info("Database migrations applied successfully")
+    """Apply database schema. Uses create_all in production (Vercel read-only FS),
+    Alembic for local development."""
+    if settings.app_env == "production":
+        # Vercel: read-only filesystem, skip Alembic and create tables directly
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables created via create_all (production mode)")
+    else:
+        from alembic import command
+        from alembic.config import Config
+
+        project_dir = Path(__file__).resolve().parents[1]
+        alembic_ini_path = project_dir / "alembic.ini"
+        alembic_cfg = Config(str(alembic_ini_path))
+        alembic_cfg.set_main_option("script_location", str(project_dir / "migrations"))
+        alembic_cfg.set_main_option("sqlalchemy.url", settings.database_url)
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Database migrations applied successfully")
 
 
 def seed_demo_data() -> None:
@@ -65,8 +73,9 @@ def init_db() -> None:
     ensure_runtime_directories()
     run_migrations()
     seed_demo_data()
-    logger.info("Database initialization completed using Alembic migrations.")
+    logger.info("Database initialization completed.")
 
 
 if __name__ == "__main__":
     init_db()
+
