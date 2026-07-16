@@ -6,6 +6,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { execSync } from "child_process";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
@@ -57,7 +58,38 @@ copyDirSync(
   path.join(FUNC_DIR, "aurasport-backend")
 );
 
-// 5. Write the .vc-config.json for the Python function
+// 5. Install Python dependencies into the function directory
+console.log("📦 Installing Python dependencies into function directory...");
+try {
+  execSync(
+    `pip install -r "${path.join(FUNC_DIR, "requirements.txt")}" -t "${FUNC_DIR}" --no-cache-dir`,
+    { stdio: "inherit" }
+  );
+  console.log("✅ Python dependencies installed successfully");
+} catch (e) {
+  // Try python3 -m pip if pip is not found
+  try {
+    execSync(
+      `python3 -m pip install -r "${path.join(FUNC_DIR, "requirements.txt")}" -t "${FUNC_DIR}" --no-cache-dir`,
+      { stdio: "inherit" }
+    );
+    console.log("✅ Python dependencies installed successfully (via python3 -m pip)");
+  } catch (e2) {
+    // Try python -m pip as last resort
+    try {
+      execSync(
+        `python -m pip install -r "${path.join(FUNC_DIR, "requirements.txt")}" -t "${FUNC_DIR}" --no-cache-dir`,
+        { stdio: "inherit" }
+      );
+      console.log("✅ Python dependencies installed successfully (via python -m pip)");
+    } catch (e3) {
+      console.error("⚠️ Could not install Python dependencies. pip not found.");
+      console.error("   The function may fail if dependencies are not pre-installed.");
+    }
+  }
+}
+
+// 6. Write the .vc-config.json for the Python function
 fs.writeFileSync(
   path.join(FUNC_DIR, ".vc-config.json"),
   JSON.stringify(
@@ -72,7 +104,7 @@ fs.writeFileSync(
   )
 );
 
-// 6. Patch the Vercel output config.json to route /api/* to our function
+// 7. Patch the Vercel output config.json to route /api/* to our function
 const config = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf-8"));
 
 // Insert the /api route BEFORE the catch-all (which is the last entry)
