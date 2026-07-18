@@ -1,17 +1,11 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
+export const API_BASE_URL =
+  import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "http://127.0.0.1:8000/api";
 
 export type BackendUser = {
   id: number;
-  username: string;
+  name: string;
   email: string;
-  role: "user" | "admin";
-  full_name: string | null;
-  phone_number: string | null;
-  address_line: string | null;
-  city: string | null;
-  state: string | null;
-  postal_code: string | null;
-  preferred_contact: "whatsapp" | "call" | "email" | null;
+  created_at: string;
 };
 
 export type Category = {
@@ -22,14 +16,19 @@ export type Category = {
 export type Product = {
   id: number;
   name: string;
+  description: string | null;
   price: number;
+  stock: number;
   image_url: string | null;
-  category: Category | null;
+  category_id: number;
+  category: Category;
 };
 
 export type CartItem = {
   id: number;
-  qty: number;
+  product_id: number;
+  quantity: number;
+  line_total: number;
   product: {
     id: number;
     name: string;
@@ -38,47 +37,42 @@ export type CartItem = {
   };
 };
 
+export type Cart = {
+  id: number;
+  user_id: number;
+  items: CartItem[];
+  total_items: number;
+  total_amount: number;
+};
+
 export type OrderItem = {
   id: number;
+  product_id: number;
   quantity: number;
   price: number;
+  line_total: number;
   product: {
     id: number;
     name: string;
-    price: number;
     image_url: string | null;
   };
 };
 
 export type Order = {
   id: number;
-  total_price: number;
+  user_id: number;
   status: string;
-  customer_name: string;
-  phone_number: string;
-  address_line: string;
-  city: string;
-  state: string;
-  postal_code: string;
-  contact_preference: "whatsapp" | "call" | "email";
-  notes: string | null;
-  admin_notes: string | null;
-  order_items: OrderItem[];
+  created_at: string;
+  items: OrderItem[];
+  total_items: number;
+  total_amount: number;
 };
 
-export type OrderStatus =
-  | "pending"
-  | "contacted"
-  | "confirmed"
-  | "packed"
-  | "shipped"
-  | "completed"
-  | "cancelled";
+export type OrderStatus = "pending" | "confirmed" | "shipped" | "delivered" | "cancelled";
 
-export type AuthResponse = {
+export type AuthTokenResponse = {
   access_token: string;
   token_type: string;
-  user: BackendUser;
 };
 
 type RequestOptions = Omit<RequestInit, "body"> & {
@@ -106,6 +100,10 @@ async function parseResponse<T>(response: Response): Promise<T> {
     throw new Error(message);
   }
 
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   return (await response.json()) as T;
 }
 
@@ -120,7 +118,8 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     headers.set("Authorization", `Bearer ${options.token}`);
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const response = await fetch(`${API_BASE_URL}${normalizedPath}`, {
     ...options,
     headers,
     body:
@@ -137,9 +136,17 @@ export function getImageUrl(imageUrl: string | null | undefined): string {
     return "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=1200&q=80";
   }
 
-  if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://") || imageUrl.startsWith("/products/")) {
+  if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
     return imageUrl;
   }
 
-  return `${API_BASE_URL}${imageUrl}`;
+  if (imageUrl.startsWith("/products/")) {
+    return imageUrl;
+  }
+
+  if (imageUrl.startsWith("/")) {
+    return `http://127.0.0.1:8000${imageUrl}`;
+  }
+
+  return `${API_BASE_URL}/${imageUrl}`;
 }

@@ -27,7 +27,7 @@ const signInSchema = z.object({
 });
 
 const signUpSchema = z.object({
-  username: z.string().trim().min(3, "At least 3 characters").max(50),
+  name: z.string().trim().min(2, "At least 2 characters").max(100),
   email: z.string().trim().email("Enter a valid email").max(255),
   password: z.string().min(6, "At least 6 characters").max(72),
 });
@@ -186,10 +186,10 @@ function AuthPage() {
             {mode === "signup" ? (
               <Field
                 icon={<UserIcon className="h-4 w-4" />}
-                name="username"
+                name="name"
                 type="text"
-                placeholder="Username"
-                autoComplete="username"
+                placeholder="Full name"
+                autoComplete="name"
               />
             ) : null}
             <Field
@@ -234,7 +234,7 @@ function AuthPage() {
           </form>
 
           <p className="mt-8 text-center text-xs text-muted-foreground">
-            This screen now talks directly to the AuraSport backend instead of Supabase.
+            This screen now talks directly to the FastAPI auth backend.
           </p>
         </div>
       </div>

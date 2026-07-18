@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
 
 import { Navbar } from "@/components/landing/Navbar";
 import { OrderStatusBadge, OrderStatusTracker } from "@/components/orders/OrderStatusTracker";
@@ -20,28 +20,13 @@ export const Route = createFileRoute("/orders")({
 
 function OrdersPage() {
   const { token, user } = useAuth();
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+  const ordersQuery = useQuery({
+    queryKey: ["orders", token],
+    queryFn: () => apiRequest<Order[]>("/orders", { token }),
+    enabled: Boolean(token),
+  });
 
-  useEffect(() => {
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
-    async function load() {
-      try {
-        const data = await apiRequest<Order[]>("/orders", { token });
-        setOrders(data);
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Could not load orders");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    void load();
-  }, [token]);
+  const orders = ordersQuery.data ?? [];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -49,10 +34,10 @@ function OrdersPage() {
       <main className="mx-auto max-w-7xl px-6 pb-20 pt-32">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary">Requests</p>
-            <h1 className="mt-4 text-4xl font-black tracking-[-0.04em] md:text-6xl">Your order requests.</h1>
+            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary">Orders</p>
+            <h1 className="mt-4 text-4xl font-black tracking-[-0.04em] md:text-6xl">Your checkout history.</h1>
             <p className="mt-4 text-muted-foreground">
-              {user ? `Review every order request placed by ${user.email}.` : "Sign in to view your order history."}
+              {user ? `Review every order placed by ${user.email}.` : "Sign in to view your order history."}
             </p>
           </div>
           <Link
@@ -75,14 +60,14 @@ function OrdersPage() {
               Sign in
             </Link>
           </div>
-        ) : loading ? (
+        ) : ordersQuery.isLoading ? (
           <div className="flex min-h-[40vh] items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : orders.length === 0 ? (
           <div className="mt-10 rounded-[2rem] border border-dashed border-white/10 p-10 text-center">
-            <h2 className="text-2xl font-semibold">No requests yet.</h2>
-            <p className="mt-2 text-muted-foreground">Once you place an order request, it will appear here.</p>
+            <h2 className="text-2xl font-semibold">No orders yet.</h2>
+            <p className="mt-2 text-muted-foreground">Once you check out, your orders will appear here.</p>
           </div>
         ) : (
           <section className="mt-10 space-y-6">
@@ -91,27 +76,19 @@ function OrdersPage() {
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary">
-                      Request #{order.id}
+                      Order #{order.id}
                     </p>
                     <div className="mt-3">
                       <OrderStatusBadge status={order.status} />
                     </div>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      {order.customer_name} | {order.contact_preference} | {order.phone_number}
+                      Placed {format(new Date(order.created_at), "PPP p")}
                     </p>
                   </div>
                   <div className="text-right">
                     <div className="text-sm text-muted-foreground">Total</div>
-                    <div className="text-2xl font-black">${order.total_price.toFixed(2)}</div>
+                    <div className="text-2xl font-black">${order.total_amount.toFixed(2)}</div>
                   </div>
-                </div>
-
-                <div className="mt-4 rounded-[1.5rem] border border-white/10 bg-background/30 p-4 text-sm text-muted-foreground">
-                  <div>
-                    {order.address_line}, {order.city}, {order.state} - {order.postal_code}
-                  </div>
-                  {order.notes ? <div className="mt-2">Customer note: {order.notes}</div> : null}
-                  {order.admin_notes ? <div className="mt-2">AuraSport note: {order.admin_notes}</div> : null}
                 </div>
 
                 <div className="mt-4">
@@ -124,12 +101,12 @@ function OrdersPage() {
                     params={{ orderId: String(order.id) }}
                     className="rounded-full border border-white/10 px-4 py-2 text-sm font-semibold transition hover:bg-white/5"
                   >
-                    View full request
+                    View order details
                   </Link>
                 </div>
 
                 <div className="mt-6 grid gap-4">
-                  {order.order_items.map((item) => (
+                  {order.items.map((item) => (
                     <div
                       key={item.id}
                       className="grid items-center gap-4 rounded-[1.5rem] border border-white/10 bg-background/40 p-4 md:grid-cols-[84px_1fr_auto]"
@@ -145,9 +122,7 @@ function OrdersPage() {
                           Qty {item.quantity} x ${item.price.toFixed(2)}
                         </div>
                       </div>
-                      <div className="text-lg font-bold">
-                        ${(item.quantity * item.price).toFixed(2)}
-                      </div>
+                      <div className="text-lg font-bold">${item.line_total.toFixed(2)}</div>
                     </div>
                   ))}
                 </div>

@@ -1,15 +1,21 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
-import { apiRequest, type AuthResponse, type BackendUser } from "@/lib/api";
+import { apiRequest, type AuthTokenResponse, type BackendUser } from "@/lib/api";
 
 const STORAGE_KEY = "aurasport.auth";
+
+type SignUpPayload = {
+  name: string;
+  email: string;
+  password: string;
+};
 
 type AuthCtx = {
   user: BackendUser | null;
   token: string | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (payload: { username: string; email: string; password: string }) => Promise<void>;
+  signUp: (payload: SignUpPayload) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
   setUser: (user: BackendUser | null) => void;
@@ -50,8 +56,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  async function applyAuthResponse(response: AuthResponse) {
-    persistSession(response.access_token, response.user);
+  async function fetchCurrentUser(authToken: string): Promise<BackendUser> {
+    return apiRequest<BackendUser>("/auth/me", { token: authToken });
+  }
+
+  async function applyTokenResponse(response: AuthTokenResponse) {
+    const currentUser = await fetchCurrentUser(response.access_token);
+    persistSession(response.access_token, currentUser);
   }
 
   async function refreshUser() {
@@ -61,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const currentUser = await apiRequest<BackendUser>("/me", { token });
+      const currentUser = await fetchCurrentUser(token);
       persistSession(token, currentUser);
     } catch {
       persistSession(null, null);
@@ -108,22 +119,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         token,
         loading,
         signIn: async (email, password) => {
-          const response = await apiRequest<AuthResponse>("/login", {
+          const response = await apiRequest<AuthTokenResponse>("/auth/login", {
             method: "POST",
             body: { email, password },
           });
-          await applyAuthResponse(response);
+          await applyTokenResponse(response);
         },
-        signUp: async ({ username, email, password }) => {
-          await apiRequest<BackendUser>("/register", {
+        signUp: async ({ name, email, password }) => {
+          await apiRequest<BackendUser>("/auth/register", {
             method: "POST",
-            body: { username, email, password },
+            body: { name, email, password },
           });
-          const response = await apiRequest<AuthResponse>("/login", {
+          const response = await apiRequest<AuthTokenResponse>("/auth/login", {
             method: "POST",
             body: { email, password },
           });
-          await applyAuthResponse(response);
+          await applyTokenResponse(response);
         },
         signOut: async () => {
           persistSession(null, null);

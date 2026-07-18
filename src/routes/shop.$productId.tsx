@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Heart, Loader2, ShoppingBag } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Navbar } from "@/components/landing/Navbar";
@@ -20,27 +21,39 @@ export const Route = createFileRoute("/shop/$productId")({
 
 function ProductDetailPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { productId } = Route.useParams();
   const { token } = useAuth();
   const { isWishlisted, toggleWishlist } = useWishlist();
-  const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await apiRequest<Product>(`/products/${productId}`);
-        setProduct(data);
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Could not load product");
-      } finally {
-        setLoading(false);
-      }
-    }
+  const productQuery = useQuery({
+    queryKey: ["product", productId],
+    queryFn: () => apiRequest<Product>(`/products/${productId}`),
+  });
 
-    void load();
-  }, [productId]);
+  const addToCartMutation = useMutation({
+    mutationFn: (nextProductId: number) =>
+      apiRequest("/cart/items", {
+        method: "POST",
+        token,
+        body: { product_id: nextProductId, quantity: 1 },
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["cart"] });
+      window.dispatchEvent(new Event("aurasport-cart-updated"));
+      toast.success("Added to cart");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Could not add to cart");
+    },
+    onSettled: () => {
+      setAdding(false);
+    },
+  });
+
+  const product = productQuery.data ?? null;
+  const loading = productQuery.isLoading;
 
   async function addToCart() {
     if (!product) {
@@ -52,20 +65,8 @@ function ProductDetailPage() {
       return;
     }
 
-    try {
-      setAdding(true);
-      await apiRequest("/carts", {
-        method: "POST",
-        token,
-        body: { product_id: product.id, qty: 1 },
-      });
-      window.dispatchEvent(new Event("aurasport-cart-updated"));
-      toast.success("Added to cart");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not add to cart");
-    } finally {
-      setAdding(false);
-    }
+    setAdding(true);
+    addToCartMutation.mutate(product.id);
   }
 
   return (

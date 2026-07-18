@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Heart, Loader2, Search, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
@@ -20,35 +21,55 @@ export const Route = createFileRoute("/shop")({
 
 function ShopPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { token, user } = useAuth();
   const { isWishlisted, toggleWishlist } = useWishlist();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
   const [submittingId, setSubmittingId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [sort, setSort] = useState("featured");
   const [priceRange, setPriceRange] = useState("all");
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [productData, categoryData] = await Promise.all([
-          apiRequest<Product[]>("/products"),
-          apiRequest<Category[]>("/categories"),
-        ]);
-        setProducts(productData);
-        setCategories(categoryData);
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Could not load catalog");
-      } finally {
-        setLoading(false);
-      }
-    }
+  const productsQuery = useQuery({
+    queryKey: ["products"],
+    queryFn: () => apiRequest<Product[]>("/products"),
+  });
 
-    void load();
-  }, []);
+  const categoriesQuery = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => apiRequest<Category[]>("/categories"),
+  });
+
+  const addToCartMutation = useMutation({
+    mutationFn: (productId: number) =>
+      apiRequest("/cart/items", {
+        method: "POST",
+        token,
+        body: { product_id: productId, quantity: 1 },
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["cart"] });
+      window.dispatchEvent(new Event("aurasport-cart-updated"));
+      toast.success("Added to cart");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Could not add to cart");
+    },
+    onSettled: () => {
+      setSubmittingId(null);
+    },
+  });
+
+  useEffect(() => {
+    if (productsQuery.error || categoriesQuery.error) {
+      const error = productsQuery.error ?? categoriesQuery.error;
+      toast.error(error instanceof Error ? error.message : "Could not load catalog");
+    }
+  }, [categoriesQuery.error, productsQuery.error]);
+
+  const products = productsQuery.data ?? [];
+  const categories = categoriesQuery.data ?? [];
+  const loading = productsQuery.isLoading || categoriesQuery.isLoading;
 
   const filteredProducts = useMemo(() => {
     const normalizedSearch = search.toLowerCase().trim();
@@ -84,20 +105,8 @@ function ShopPage() {
       return;
     }
 
-    try {
-      setSubmittingId(productId);
-      await apiRequest("/carts", {
-        method: "POST",
-        token,
-        body: { product_id: productId, qty: 1 },
-      });
-      window.dispatchEvent(new Event("aurasport-cart-updated"));
-      toast.success("Added to cart");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not add to cart");
-    } finally {
-      setSubmittingId(null);
-    }
+    setSubmittingId(productId);
+    addToCartMutation.mutate(productId);
   }
 
   return (

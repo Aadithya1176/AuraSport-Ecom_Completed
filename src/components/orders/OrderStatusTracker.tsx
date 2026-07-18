@@ -1,14 +1,12 @@
 import type { OrderStatus } from "@/lib/api";
 
-const ORDER_STEPS: OrderStatus[] = ["pending", "contacted", "confirmed", "packed", "shipped", "completed"];
+const ORDER_STEPS: OrderStatus[] = ["pending", "confirmed", "shipped", "delivered"];
 
 const ORDER_LABELS: Record<OrderStatus, string> = {
-  pending: "Request sent",
-  contacted: "Contact started",
+  pending: "Pending",
   confirmed: "Confirmed",
-  packed: "Packed",
   shipped: "Shipped",
-  completed: "Completed",
+  delivered: "Delivered",
   cancelled: "Cancelled",
 };
 
@@ -39,7 +37,7 @@ export function OrderStatusTracker({ status }: { status: string }) {
   const currentIndex = Math.max(ORDER_STEPS.indexOf(status as OrderStatus), 0);
 
   return (
-    <div className="grid gap-3 md:grid-cols-6">
+    <div className="grid gap-3 md:grid-cols-4">
       {ORDER_STEPS.map((step, index) => {
         const isDone = index <= currentIndex;
         return (

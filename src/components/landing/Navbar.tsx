@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Heart, LogOut, ReceiptText, Search, ShoppingBag, Shield, User, Menu, X } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 
-import { apiRequest, type CartItem } from "@/lib/api";
+import { apiRequest, type Cart } from "@/lib/api";
 import { useAuth } from "@/lib/useAuth";
 
 const links = [
@@ -18,9 +19,13 @@ const links = [
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
   const navigate = useNavigate();
   const { user, token, signOut } = useAuth();
+  const cartQuery = useQuery({
+    queryKey: ["cart", token],
+    queryFn: () => apiRequest<Cart>("/cart", { token }),
+    enabled: Boolean(token),
+  });
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -30,25 +35,12 @@ export function Navbar() {
   }, []);
 
   useEffect(() => {
-    if (!token) {
-      setCartCount(0);
-      return;
-    }
-
-    async function loadCartCount() {
-      try {
-        const items = await apiRequest<CartItem[]>("/cart", { token });
-        setCartCount(items.reduce((sum, item) => sum + item.qty, 0));
-      } catch {
-        setCartCount(0);
-      }
-    }
-
-    void loadCartCount();
-    const onCartUpdated = () => void loadCartCount();
+    const onCartUpdated = () => void cartQuery.refetch();
     window.addEventListener("aurasport-cart-updated", onCartUpdated);
     return () => window.removeEventListener("aurasport-cart-updated", onCartUpdated);
-  }, [token]);
+  }, [cartQuery]);
+
+  const cartCount = cartQuery.data?.total_items ?? 0;
 
   return (
     <motion.header
@@ -131,7 +123,7 @@ export function Navbar() {
 
           {user ? (
             <>
-              {user.role === "admin" ? (
+              {false ? (
                 <>
                   <Link
                     to="/admin/catalog"

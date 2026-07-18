@@ -13,7 +13,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.routers import auth as auth_router
+from app.routers import cart as cart_router
 from app.routers import categories as categories_router
+from app.routers import orders as orders_router
+from app.routers import products as products_router
 
 settings = get_settings()
 
@@ -39,6 +42,9 @@ app.add_middleware(
 # ──────────────────────────────────────────────
 app.include_router(auth_router.router)
 app.include_router(categories_router.router)
+app.include_router(products_router.router)
+app.include_router(cart_router.router)
+app.include_router(orders_router.router)
 
 
 @app.get("/api/health", tags=["Health"])

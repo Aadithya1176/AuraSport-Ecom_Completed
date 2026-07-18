@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Heart, Loader2, ShoppingBag } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Navbar } from "@/components/landing/Navbar";
@@ -20,26 +21,38 @@ export const Route = createFileRoute("/wishlist")({
 
 function WishlistPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { token } = useAuth();
   const { wishlist, toggleWishlist } = useWishlist();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const productData = await apiRequest<Product[]>("/products");
-        setProducts(productData);
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Could not load wishlist");
-      } finally {
-        setLoading(false);
-      }
-    }
+  const productsQuery = useQuery({
+    queryKey: ["products"],
+    queryFn: () => apiRequest<Product[]>("/products"),
+  });
 
-    void load();
-  }, []);
+  const addToCartMutation = useMutation({
+    mutationFn: (productId: number) =>
+      apiRequest("/cart/items", {
+        method: "POST",
+        token,
+        body: { product_id: productId, quantity: 1 },
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["cart"] });
+      window.dispatchEvent(new Event("aurasport-cart-updated"));
+      toast.success("Added to cart");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Could not add to cart");
+    },
+    onSettled: () => {
+      setBusyId(null);
+    },
+  });
+
+  const products = productsQuery.data ?? [];
+  const loading = productsQuery.isLoading;
 
   const savedProducts = useMemo(
     () => products.filter((product) => wishlist.includes(product.id)),
@@ -52,20 +65,8 @@ function WishlistPage() {
       return;
     }
 
-    try {
-      setBusyId(productId);
-      await apiRequest("/carts", {
-        method: "POST",
-        token,
-        body: { product_id: productId, qty: 1 },
-      });
-      window.dispatchEvent(new Event("aurasport-cart-updated"));
-      toast.success("Added to cart");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not add to cart");
-    } finally {
-      setBusyId(null);
-    }
+    setBusyId(productId);
+    addToCartMutation.mutate(productId);
   }
 
   return (
